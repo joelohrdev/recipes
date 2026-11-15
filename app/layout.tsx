@@ -3,7 +3,7 @@ import { Atkinson_Hyperlegible_Next, Zilla_Slab } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
 import { LockStatus } from "@/components/lock-status";
-import { Bookmark, Mark, Plus } from "@/components/icons";
+import { Bookmark, Calendar, Mark, Plus } from "@/components/icons";
 import { OfflineBanner, ServiceWorker } from "@/components/pwa";
 import "./globals.css";
 
@@ -46,7 +46,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 Recipe Box
               </span>
             </Link>
-            <Link href="/bookmarklet" className="btn-quiet max-sm:px-3" aria-label="Save from the web">
+            <Link href="/plan" className="btn-quiet max-sm:px-2.5" aria-label="Dinners this week">
+              <Calendar />
+              <span className="max-sm:hidden">This week</span>
+            </Link>
+            <Link href="/bookmarklet" className="btn-quiet max-sm:hidden" aria-label="Save from the web">
               <Bookmark />
               <span className="max-sm:hidden">Save from the web</span>
             </Link>

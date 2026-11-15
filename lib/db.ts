@@ -58,6 +58,14 @@ const SCHEMA = `
     data        BLOB NOT NULL,
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  -- The dinner plan: one recipe per evening. Dates are the household's local
+  -- calendar dates (YYYY-MM-DD). Past rows are kept so picks can avoid repeats.
+  CREATE TABLE IF NOT EXISTS dinners (
+    date       TEXT PRIMARY KEY,
+    recipe_id  INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS dinners_recipe ON dinners (recipe_id);
 `;
 
 // Columns added after the first release; added to existing databases on startup.
@@ -183,7 +191,13 @@ export async function updateRecipeRow(id: number, r: RecipeInput) {
 }
 
 export async function deleteRecipeRow(id: number) {
-  await (await db()).execute({ sql: "DELETE FROM recipes WHERE id = ?", args: [id] });
+  await (await db()).batch(
+    [
+      { sql: "DELETE FROM recipes WHERE id = ?", args: [id] },
+      { sql: "DELETE FROM dinners WHERE recipe_id = ?", args: [id] },
+    ],
+    "write",
+  );
 }
 
 // ---- Web imports (bookmarklet) ----
@@ -276,4 +290,82 @@ export async function deletePhotoIfUnused(imageUrl: string) {
             AND NOT EXISTS (SELECT 1 FROM recipes WHERE image_url = ?)`,
     args: [match[1], imageUrl],
   });
+}
+
+// ---- Dinner plan ----
+
+export type PlannedDinner = {
+  date: string;
+  recipe: Pick<RecipeSummary, "id" | "title" | "imageUrl" | "prepMinutes" | "cookMinutes">;
+};
+
+/** Planned dinners from a date onward, earliest first. */
+export async function listDinnersFrom(date: string): Promise<PlannedDinner[]> {
+  const { rows } = await (await db()).execute({
+    sql: `SELECT d.date, r.id, r.title, r.image_url, r.prep_minutes, r.cook_minutes
+          FROM dinners d JOIN recipes r ON r.id = d.recipe_id
+          WHERE d.date >= ? ORDER BY d.date`,
+    args: [date],
+  });
+  return rows.map((row) => ({
+    date: String(row.date),
+    recipe: {
+      id: Number(row.id),
+      title: String(row.title),
+      imageUrl: String(row.image_url),
+      prepMinutes: row.prep_minutes === null ? null : Number(row.prep_minutes),
+      cookMinutes: row.cook_minutes === null ? null : Number(row.cook_minutes),
+    },
+  }));
+}
+
+/** Every recipe with its tags and the last date it was planned outside a window. */
+export async function listDinnerCandidates(window: { from: string; to: string }) {
+  const { rows } = await (await db()).execute({
+    sql: `SELECT r.id, r.tags,
+            (SELECT MAX(d.date) FROM dinners d
+              WHERE d.recipe_id = r.id AND (d.date < :from OR d.date > :to)) AS last_had
+          FROM recipes r`,
+    args: window,
+  });
+  return rows.map((row) => ({
+    id: Number(row.id),
+    tags: JSON.parse(String(row.tags)) as string[],
+    lastHad: row.last_had === null ? null : String(row.last_had),
+  }));
+}
+
+/** Recipe ids planned between two dates, inclusive. */
+export async function plannedBetween(from: string, to: string) {
+  const { rows } = await (await db()).execute({
+    sql: "SELECT date, recipe_id FROM dinners WHERE date >= ? AND date <= ?",
+    args: [from, to],
+  });
+  return rows.map((row) => ({ date: String(row.date), recipeId: Number(row.recipe_id) }));
+}
+
+/** Replace the plan from a date onward with new dinners. */
+export async function replaceDinnersFrom(from: string, dinners: { date: string; recipeId: number }[]) {
+  await (await db()).batch(
+    [
+      { sql: "DELETE FROM dinners WHERE date >= ?", args: [from] },
+      ...dinners.map((d) => ({
+        sql: "INSERT INTO dinners (date, recipe_id) VALUES (?, ?)",
+        args: [d.date, d.recipeId],
+      })),
+    ],
+    "write",
+  );
+}
+
+export async function setDinner(date: string, recipeId: number) {
+  await (await db()).execute({
+    sql: `INSERT INTO dinners (date, recipe_id) VALUES (?, ?)
+          ON CONFLICT (date) DO UPDATE SET recipe_id = excluded.recipe_id`,
+    args: [date, recipeId],
+  });
+}
+
+export async function clearDinnersFrom(from: string) {
+  await (await db()).execute({ sql: "DELETE FROM dinners WHERE date >= ?", args: [from] });
 }

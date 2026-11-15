@@ -8,6 +8,9 @@ tap-to-check ingredients and steps, and a "keep screen on" switch.
   pages) and AI fills in the form for you to check.
 - **Browser button**: a bookmarklet that sends the recipe page you're looking at to
   the app. AI reads it and opens a filled-in form. Set it up at `/bookmarklet`.
+- **Dinners this week**: one tap picks 3–7 dinners, favoring ones you haven't had
+  lately so the same few don't keep coming back. Swap any night, or pick again.
+  Recipes tagged "dinner" are used first.
 - **Passcode**: anyone can read recipes; adding, editing and deleting asks for the
   passcode once per device (remembered for 90 days, "Lock" in the header forgets it).
 - **Works offline**: it installs as an app (*Share → Add to Home Screen* in Safari).

@@ -124,3 +124,16 @@ export const Copy = (p: IconProps) => (
     <path d="M15.5 8.5V5a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 5v10A1.5 1.5 0 0 0 6 16.5h2.5" />
   </Svg>
 );
+export const Calendar = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="4" y="5" width="16" height="15" rx="1.5" />
+    <path d="M4 10h16M8.5 3v4M15.5 3v4" />
+  </Svg>
+);
+export const Shuffle = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 7h3.5c2 0 3 1 4.2 3l1.6 3c1.2 2 2.2 3 4.2 3H20" />
+    <path d="M4 17h3.5c1.4 0 2.3-.5 3.1-1.4M13.4 8.4C14.2 7.5 15.1 7 16.5 7H20" />
+    <path d="m17.5 4.5 2.5 2.5-2.5 2.5M17.5 14.5l2.5 2.5-2.5 2.5" />
+  </Svg>
+);

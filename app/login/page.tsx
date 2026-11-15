@@ -10,7 +10,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
       <Lock className="h-9 w-9 text-cobalt" />
       <h1 className="mt-3 font-slab text-[2.5rem] font-bold leading-tight">Enter the passcode</h1>
       <p className="mt-2 text-lg text-ink-soft">
-        Adding, editing and deleting recipes needs the passcode. This iPad will remember it for
+        Changing recipes or the dinner plan needs the passcode. This iPad will remember it for
         90 days.
       </p>
       <Suspense>

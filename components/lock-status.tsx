@@ -7,7 +7,7 @@ export async function LockStatus() {
   if (!(await isUnlocked())) return null;
   return (
     <form action={logoutAction}>
-      <button className="btn-quiet max-sm:px-3" title="Ask for the passcode again">
+      <button className="btn-quiet max-sm:px-2.5" title="Ask for the passcode again">
         <Lock />
         <span className="max-sm:hidden">Lock</span>
       </button>
