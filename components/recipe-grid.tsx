@@ -73,30 +73,20 @@ export function RecipeGrid({ recipes }: { recipes: RecipeSummary[] }) {
           <li key={r.id}>
             <Link
               href={`/recipes/${r.id}`}
-              className="group block overflow-hidden rounded-2xl border border-line bg-card transition active:scale-[0.99]"
+              className="flex h-full flex-col rounded-2xl border border-line border-l-4 border-l-accent bg-card p-5 transition active:scale-[0.99]"
             >
-              <div className="aspect-[4/3] overflow-hidden bg-accent-soft">
-                {r.imageUrl ? (
-                  // Recipe images come from many sites, so skip next/image domain config.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={r.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-                ) : (
-                  <div className="flex h-full items-center justify-center font-display text-6xl text-accent/60">
-                    {r.title.slice(0, 1)}
-                  </div>
-                )}
-              </div>
-              <div className="p-4">
-                <h2 className="font-display text-xl font-semibold leading-snug">{r.title}</h2>
-                <p className="mt-1 text-sm text-muted">
+              <h2 className="font-display text-xl font-semibold leading-snug">{r.title}</h2>
+              {r.description && (
+                <p className="mt-2 line-clamp-2 text-muted">{r.description}</p>
+              )}
+              <p className="mt-auto pt-3 text-sm font-semibold text-muted">
                   {[
                     totalTime(r.prepMinutes, r.cookMinutes),
                     r.servings ? `${r.servings} ${r.servingsLabel}` : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
-                </p>
-              </div>
+              </p>
             </Link>
           </li>
         ))}

@@ -4,13 +4,13 @@ const nextConfig: NextConfig = {
   experimental: {
     agentFeedback: true,
     serverActions: {
-      // Recipe photos are resized in the browser, but a few pages can add up.
-      bodySizeLimit: "12mb",
+      // Matches Vercel's 4.5 MB request limit; photos are shrunk in the browser.
+      bodySizeLimit: "4.5mb",
     },
   },
   cacheComponents: true,
   partialPrefetching: true,
-  serverExternalPackages: ["better-sqlite3"],
+  serverExternalPackages: ["@libsql/client", "libsql"],
   turbopack: {
     rules: {
       "*.css": {

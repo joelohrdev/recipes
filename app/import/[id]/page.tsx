@@ -31,7 +31,7 @@ async function Import({ params }: { params: PageProps<"/import/[id]">["params"] 
   const { id } = await params;
   await requireUnlocked(`/import/${id}`);
 
-  const page = findWebImport(id);
+  const page = await findWebImport(id);
   if (!page) {
     return (
       <Message title="This import has expired">
@@ -44,7 +44,7 @@ async function Import({ params }: { params: PageProps<"/import/[id]">["params"] 
   if (!recipe) {
     try {
       recipe = await recipeFromWebPage(page);
-      saveWebImportResult(id, recipe);
+      await saveWebImportResult(id, recipe);
     } catch (error) {
       if (!(error instanceof ExtractionError)) console.error(error);
       return (

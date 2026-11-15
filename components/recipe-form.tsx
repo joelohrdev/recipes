@@ -58,7 +58,6 @@ export function RecipeForm({
   const [servingsLabel, setServingsLabel] = useState(initial.servingsLabel || "servings");
   const [prep, setPrep] = useState(initial.prepMinutes ? String(initial.prepMinutes) : "");
   const [cook, setCook] = useState(initial.cookMinutes ? String(initial.cookMinutes) : "");
-  const [imageUrl, setImageUrl] = useState(initial.imageUrl);
   const [sourceUrl, setSourceUrl] = useState(initial.sourceUrl);
   const [tags, setTags] = useState(initial.tags.join(", "));
   const [notes, setNotes] = useState(initial.notes);
@@ -74,7 +73,6 @@ export function RecipeForm({
     setServingsLabel(r.servingsLabel || "servings");
     setPrep(r.prepMinutes ? String(r.prepMinutes) : "");
     setCook(r.cookMinutes ? String(r.cookMinutes) : "");
-    if (r.imageUrl) setImageUrl(r.imageUrl);
     if (r.sourceUrl) setSourceUrl(r.sourceUrl);
     setTags(r.tags.join(", "));
     setNotes(r.notes);
@@ -102,7 +100,6 @@ export function RecipeForm({
       servingsLabel,
       prepMinutes: numOrNull(prep),
       cookMinutes: numOrNull(cook),
-      imageUrl,
       sourceUrl,
       notes,
       tags: tags.split(","),
@@ -169,11 +166,7 @@ export function RecipeForm({
             <input className="field" inputMode="numeric" value={cook} onChange={(e) => setCook(e.target.value)} />
           </label>
         </div>
-        <label>
-          <span className="label">Photo URL</span>
-          <input className="field" type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://…" />
-        </label>
-        <label>
+        <label className="md:col-span-2">
           <span className="label">Source URL</span>
           <input className="field" type="url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://…" />
         </label>
@@ -297,7 +290,10 @@ function DeleteButton({ id }: { id: number }) {
 
 // ---- Photo → recipe ----
 
-const MAX_EDGE = 1800;
+const MAX_EDGE = 1600;
+const MAX_PHOTOS = 4;
+// Vercel rejects requests over 4.5 MB, so keep the photos well under that.
+const MAX_UPLOAD_CHARS = 4_000_000;
 
 /** Downscale a camera photo to a JPEG small enough to upload quickly. */
 async function shrink(file: File): Promise<{ mediaType: "image/jpeg"; data: string }> {
@@ -311,7 +307,7 @@ async function shrink(file: File): Promise<{ mediaType: "image/jpeg"; data: stri
     canvas.width = Math.round(img.naturalWidth * scale);
     canvas.height = Math.round(img.naturalHeight * scale);
     canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
     return { mediaType: "image/jpeg", data: dataUrl.slice(dataUrl.indexOf(",") + 1) };
   } finally {
     URL.revokeObjectURL(url);
@@ -331,6 +327,10 @@ function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
       try {
         setStatus("Preparing photos…");
         const photos = await Promise.all(files.map(shrink));
+        if (photos.reduce((sum, p) => sum + p.data.length, 0) > MAX_UPLOAD_CHARS) {
+          setError("Those photos are too large together. Try fewer pages at a time.");
+          return;
+        }
         setStatus("Reading the recipe… this can take up to a minute.");
         const result = await recipeFromPhotosAction(photos);
         if ("error" in result) setError(result.error);
@@ -364,11 +364,16 @@ function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
           hidden
           onChange={(e) => {
             const picked = Array.from(e.target.files ?? []);
-            setFiles((f) => [...f, ...picked].slice(0, 6));
+            setFiles((f) => [...f, ...picked].slice(0, MAX_PHOTOS));
             e.target.value = "";
           }}
         />
-        <button type="button" className="btn-ghost" onClick={() => input.current?.click()} disabled={pending}>
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => input.current?.click()}
+          disabled={pending || files.length >= MAX_PHOTOS}
+        >
           {files.length ? "Add another photo" : "Take or choose photo"}
         </button>
         {files.length > 0 && (

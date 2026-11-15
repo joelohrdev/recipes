@@ -26,16 +26,14 @@ export async function POST(request: Request) {
   if (!/^https?:\/\//.test(url) || !pageText.trim()) {
     return new Response("Missing page URL or text", { status: 400 });
   }
-  const imageUrl = field(form, "image", 2000);
 
   const id = randomUUID();
-  insertWebImport({
+  await insertWebImport({
     id,
     url,
     title: field(form, "title", 500),
     pageText,
     structured: field(form, "structured", MAX_STRUCTURED),
-    imageUrl: /^https?:\/\//.test(imageUrl) ? imageUrl : "",
   });
 
   return Response.redirect(new URL(`/import/${id}`, request.url), 303);

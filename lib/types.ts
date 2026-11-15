@@ -21,7 +21,6 @@ export const RecipeInputSchema = z.object({
   servingsLabel: z.string(),
   prepMinutes: z.number().nullable(),
   cookMinutes: z.number().nullable(),
-  imageUrl: z.string(),
   sourceUrl: z.string(),
   notes: z.string(),
   tags: z.array(z.string()),
@@ -43,7 +42,6 @@ export type RecipeSummary = Pick<
   | "id"
   | "title"
   | "description"
-  | "imageUrl"
   | "tags"
   | "prepMinutes"
   | "cookMinutes"
@@ -58,7 +56,6 @@ export const emptyRecipe: RecipeInput = {
   servingsLabel: "servings",
   prepMinutes: null,
   cookMinutes: null,
-  imageUrl: "",
   sourceUrl: "",
   notes: "",
   tags: [],

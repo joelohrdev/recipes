@@ -9,9 +9,8 @@ var d=document,f=d.createElement('form');
 f.method='POST';f.action=${JSON.stringify(origin + "/api/import")};f.acceptCharset='UTF-8';
 function a(n,v){var i=d.createElement('textarea');i.name=n;i.value=v||'';f.appendChild(i);}
 var s=[].map.call(d.querySelectorAll('script[type="application/ld+json"]'),function(x){return x.textContent}).join('\\n');
-var m=d.querySelector('meta[property="og:image"]');
 a('url',location.href);a('title',d.title);a('structured',s.slice(0,60000));
-a('image',m?m.content:'');a('text',(d.body.innerText||'').slice(0,120000));
+a('text',(d.body.innerText||'').slice(0,120000));
 f.style.display='none';d.body.appendChild(f);f.submit();
 })();`;
   return "javascript:" + encodeURIComponent(code.replace(/\n/g, ""));

@@ -61,18 +61,18 @@ export async function saveRecipeAction(
 
   let recipeId = id;
   if (recipeId === null) {
-    recipeId = insertRecipe(data);
+    recipeId = await insertRecipe(data);
   } else {
-    updateRecipeRow(recipeId, data);
+    await updateRecipeRow(recipeId, data);
   }
-  if (importId) deleteWebImport(importId);
+  if (importId) await deleteWebImport(importId);
   updateTag("recipes");
   redirect(`/recipes/${recipeId}`);
 }
 
 export async function deleteRecipeAction(id: number) {
   await requireUnlocked(`/recipes/${id}/edit`);
-  deleteRecipeRow(id);
+  await deleteRecipeRow(id);
   updateTag("recipes");
   redirect("/");
 }
@@ -83,7 +83,6 @@ function clean(r: RecipeInput): RecipeInput {
     title: r.title.trim(),
     description: r.description.trim(),
     notes: r.notes.trim(),
-    imageUrl: /^https?:\/\//.test(r.imageUrl.trim()) ? r.imageUrl.trim() : "",
     sourceUrl: /^https?:\/\//.test(r.sourceUrl.trim()) ? r.sourceUrl.trim() : "",
     tags: [...new Set(r.tags.map((t) => t.trim().toLowerCase()).filter(Boolean))],
     ingredients: r.ingredients
@@ -99,8 +98,8 @@ export async function recipeFromPhotosAction(
   photos: PhotoInput[],
 ): Promise<{ recipe: RecipeInput } | { error: string }> {
   if (!(await isUnlocked())) return { error: "Locked. Enter the passcode again." };
-  if (photos.length === 0 || photos.length > 6) {
-    return { error: "Add between 1 and 6 photos." };
+  if (photos.length === 0 || photos.length > 4) {
+    return { error: "Add between 1 and 4 photos." };
   }
   if (!photos.every((p) => ["image/jpeg", "image/png", "image/webp"].includes(p.mediaType))) {
     return { error: "Unsupported image type." };

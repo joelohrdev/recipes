@@ -84,7 +84,7 @@ export async function recipeFromPhotos(photos: PhotoInput[]) {
           : "This is a photo of a printed recipe. Extract the recipe.",
     },
   ]);
-  return { ...recipe, imageUrl: "", sourceUrl: "" };
+  return { ...recipe, sourceUrl: "" };
 }
 
 export async function recipeFromWebPage(page: {
@@ -92,7 +92,6 @@ export async function recipeFromWebPage(page: {
   title: string;
   structured: string;
   pageText: string;
-  imageUrl: string;
 }) {
   const recipe = await extract([
     {
@@ -111,9 +110,5 @@ export async function recipeFromWebPage(page: {
         .join("\n\n"),
     },
   ]);
-  return {
-    ...recipe,
-    sourceUrl: page.url,
-    imageUrl: recipe.imageUrl || page.imageUrl,
-  };
+  return { ...recipe, sourceUrl: page.url };
 }
