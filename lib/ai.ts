@@ -88,7 +88,7 @@ export async function recipeFromPhotos(photos: PhotoInput[]) {
       type: "text",
       text:
         photos.length > 1
-          ? "These photos are consecutive pages of one printed recipe. Extract the recipe."
+          ? `These ${photos.length} photos are the pages of one printed recipe, in order. Ingredients or steps may continue from one page to the next, and a later page may repeat a header or footer. Combine the pages into one recipe without dropping or duplicating anything.`
           : "This is a photo of a printed recipe. Extract the recipe.",
     },
   ]);

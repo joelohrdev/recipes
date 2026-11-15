@@ -4,7 +4,7 @@ A recipe app made for the iPad: big touch targets, a two-column cooking view,
 tap-to-check ingredients and steps, and a "keep screen on" switch.
 
 - **Scale servings**: the − / + stepper rescales every amount (1½ cups → 2¼ cups).
-- **Photo import**: on *Add recipe*, take a photo of a printed recipe (up to 4
+- **Photo import**: on *Add recipe*, take a photo of a printed recipe (up to 8
   pages) and AI fills in the form for you to check.
 - **Browser button**: a bookmarklet that sends the recipe page you're looking at to
   the app. AI reads it and opens a filled-in form. Set it up at `/bookmarklet`.

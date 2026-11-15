@@ -122,8 +122,8 @@ export async function recipeFromPhotosAction(
   photos: PhotoInput[],
 ): Promise<{ recipe: RecipeInput } | { error: string }> {
   if (!(await isUnlocked())) return { error: "Locked. Enter the passcode again." };
-  if (photos.length === 0 || photos.length > 4) {
-    return { error: "Add between 1 and 4 photos." };
+  if (photos.length === 0 || photos.length > 8) {
+    return { error: "Add between 1 and 8 photos." };
   }
   if (!photos.every((p) => ["image/jpeg", "image/png", "image/webp"].includes(p.mediaType))) {
     return { error: "That photo type isn't supported. Use a JPEG, PNG or HEIC photo." };

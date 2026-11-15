@@ -9,7 +9,7 @@ import {
   uploadPhotoAction,
 } from "@/app/actions";
 import { parseQuantity, quantityToInput } from "@/lib/quantity";
-import { PhotoError, preparePhoto } from "@/lib/prepare-photo";
+import { PhotoError, preparePhoto, type PreparedPhoto } from "@/lib/prepare-photo";
 import type { RecipeInput } from "@/lib/types";
 import { ArrowDown, ArrowUp, Camera, Close, ImageIcon, Plus, Trash } from "./icons";
 
@@ -333,37 +333,78 @@ function DeleteButton({ id }: { id: number }) {
 
 // ---- Photo → recipe ----
 
-const MAX_EDGE = 1600;
-const MAX_PHOTOS = 4;
+// Long-edge sizes to try, largest first. Several pages together must fit in
+// one upload, so if they don't, every page is redone at the next size down.
+const PAGE_EDGES = [1600, 1300, 1050];
+const MAX_PHOTOS = 8;
 // Vercel rejects requests over 4.5 MB, so keep the photos well under that.
 const MAX_UPLOAD_CHARS = 4_000_000;
 
+type Page = { id: number; file: File; url: string };
+let nextPageId = 1;
+
 function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
   const input = useRef<HTMLInputElement>(null);
-  const [files, setFiles] = useState<File[]>([]);
+  const [pages, setPages] = useState<Page[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const full = pages.length >= MAX_PHOTOS;
+
+  const addFiles = (picked: File[]) => {
+    const room = MAX_PHOTOS - pages.length;
+    setError(picked.length > room ? `You can add up to ${MAX_PHOTOS} pages.` : null);
+    const added = picked.slice(0, room).map((file) => ({ id: nextPageId++, file, url: URL.createObjectURL(file) }));
+    setPages((ps) => [...ps, ...added]);
+  };
+
+  const removePage = (id: number) =>
+    setPages((ps) => {
+      const page = ps.find((p) => p.id === id);
+      if (page) URL.revokeObjectURL(page.url);
+      return ps.filter((p) => p.id !== id);
+    });
+
+  const movePage = (index: number, by: number) => setPages((ps) => swap(ps, index, index + by));
+
+  const clear = () =>
+    setPages((ps) => {
+      ps.forEach((p) => URL.revokeObjectURL(p.url));
+      return [];
+    });
 
   const run = () => {
     setError(null);
     start(async () => {
       try {
-        setStatus("Preparing photos…");
-        // One at a time: decoding several large photos at once can exhaust
-        // Safari's image memory on an iPad.
-        const photos = [];
-        for (const file of files) photos.push(await preparePhoto(file, MAX_EDGE));
-        if (photos.reduce((sum, p) => sum + p.data.length, 0) > MAX_UPLOAD_CHARS) {
-          setError("Those photos are too large together. Try fewer pages at a time.");
+        let photos: PreparedPhoto[] | null = null;
+        for (const edge of PAGE_EDGES) {
+          const prepared: PreparedPhoto[] = [];
+          // One at a time: decoding several large photos at once can exhaust
+          // Safari's image memory on an iPad.
+          for (const [i, page] of pages.entries()) {
+            setStatus(pages.length > 1 ? `Preparing page ${i + 1} of ${pages.length}…` : "Preparing photo…");
+            prepared.push(await preparePhoto(page.file, edge));
+          }
+          if (prepared.reduce((sum, p) => sum + p.data.length, 0) <= MAX_UPLOAD_CHARS) {
+            photos = prepared;
+            break;
+          }
+        }
+        if (!photos) {
+          setError("Those pages are too large to send together. Remove a page or two and try again.");
           return;
         }
-        setStatus("Reading the recipe. This can take up to a minute.");
+        setStatus(
+          pages.length > 1
+            ? `Reading ${pages.length} pages. This can take a minute or two.`
+            : "Reading the recipe. This can take up to a minute.",
+        );
         const result = await recipeFromPhotosAction(photos);
         if ("error" in result) setError(result.error);
         else {
           onRecipe(result.recipe);
-          setFiles([]);
+          clear();
         }
       } catch (e) {
         setError(e instanceof PhotoError ? e.message : "Something went wrong reading the photo. Try again.");
@@ -380,8 +421,8 @@ function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
         <div className="min-w-56 flex-1">
           <h2 className="font-slab text-xl font-bold">Fill in from a photo</h2>
           <p className="mt-0.5 text-[0.9375rem] text-ink-soft">
-            Photograph a printed recipe or recipe card, up to 4 pages. Check what was filled in
-            before you save.
+            Photograph a printed recipe or recipe card. If it runs over several pages, take a
+            photo of each page in order, up to {MAX_PHOTOS}. Check what was filled in before you save.
           </p>
         </div>
         <input
@@ -391,54 +432,84 @@ function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
           multiple
           hidden
           onChange={(e) => {
-            const picked = Array.from(e.target.files ?? []);
-            setFiles((f) => [...f, ...picked].slice(0, MAX_PHOTOS));
+            addFiles(Array.from(e.target.files ?? []));
             e.target.value = "";
           }}
         />
-        <button
-          type="button"
-          className="btn-plain"
-          onClick={() => input.current?.click()}
-          disabled={pending || files.length >= MAX_PHOTOS}
-        >
-          {files.length ? "Add a page" : "Take or choose photo"}
-        </button>
-        {files.length > 0 && (
+        {pages.length === 0 && (
+          <button type="button" className="btn-plain" onClick={() => input.current?.click()}>
+            Take or choose photo
+          </button>
+        )}
+        {pages.length > 0 && (
           <button type="button" className="btn-primary" onClick={run} disabled={pending}>
-            {pending ? "Reading…" : files.length > 1 ? `Read ${files.length} pages` : "Read this page"}
+            {pending ? "Reading…" : pages.length > 1 ? `Read ${pages.length} pages` : "Read this page"}
           </button>
         )}
       </div>
-      {files.length > 0 && (
-        <ul className="mt-4 flex flex-wrap gap-3">
-          {files.map((f, i) => (
-            <li key={i} className="relative">
-              <Thumb file={f} />
-              {!pending && (
-                <button
-                  type="button"
-                  aria-label="Remove photo"
-                  onClick={() => setFiles((fs) => fs.filter((_, j) => j !== i))}
-                  className="absolute -right-2 -top-2 flex h-8 w-8 items-center justify-center rounded-full bg-ink text-paper"
-                >
-                  <Close className="h-4 w-4" />
-                </button>
-              )}
+      {pages.length > 0 && (
+        <ol className="mt-5 flex flex-wrap gap-4" aria-label="Pages">
+          {pages.map((page, i) => (
+            <li key={page.id} className="w-32">
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={page.url} alt={`Page ${i + 1}`} className="h-40 w-32 rounded-[4px] border border-line bg-paper object-cover" />
+                {!pending && (
+                  <button
+                    type="button"
+                    aria-label={`Remove page ${i + 1}`}
+                    onClick={() => removePage(page.id)}
+                    className="absolute -right-2 -top-2 flex h-8 w-8 items-center justify-center rounded-full bg-ink text-paper"
+                  >
+                    <Close className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <div className="mt-1 flex items-center justify-between">
+                <span className="whitespace-nowrap text-[0.9375rem] font-bold">Page {i + 1}</span>
+                {pages.length > 1 && !pending && (
+                  <span className="flex">
+                    <button
+                      type="button"
+                      aria-label={`Move page ${i + 1} earlier`}
+                      disabled={i === 0}
+                      onClick={() => movePage(i, -1)}
+                      className="flex h-10 w-10 items-center justify-center rounded-[6px] text-ink-soft active:bg-paper disabled:opacity-30"
+                    >
+                      <ArrowUp className="h-4 w-4 -rotate-90" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Move page ${i + 1} later`}
+                      disabled={i === pages.length - 1}
+                      onClick={() => movePage(i, 1)}
+                      className="flex h-10 w-10 items-center justify-center rounded-[6px] text-ink-soft active:bg-paper disabled:opacity-30"
+                    >
+                      <ArrowDown className="h-4 w-4 -rotate-90" />
+                    </button>
+                  </span>
+                )}
+              </div>
             </li>
           ))}
-        </ul>
+          {!full && !pending && (
+            <li className="w-32">
+              <button
+                type="button"
+                onClick={() => input.current?.click()}
+                className="flex h-40 w-32 flex-col items-center justify-center gap-1.5 rounded-[4px] border-2 border-dashed border-rule text-cobalt active:bg-paper"
+              >
+                <Plus className="h-6 w-6" />
+                <span className="font-semibold">Add page {pages.length + 1}</span>
+              </button>
+            </li>
+          )}
+        </ol>
       )}
       {status && <p className="mt-3 font-semibold" aria-live="polite">{status}</p>}
       {error && <p role="alert" className="mt-3 font-semibold text-margin">{error}</p>}
     </div>
   );
-}
-
-function Thumb({ file }: { file: File }) {
-  const [src] = useState(() => URL.createObjectURL(file));
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt="" className="h-24 w-20 rounded-[4px] object-cover" />;
 }
 
 // ---- Picture of the finished dish ----
