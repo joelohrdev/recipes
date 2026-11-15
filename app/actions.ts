@@ -3,7 +3,17 @@
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { isUnlocked, lock, passcodeMatches, requireUnlocked, unlock } from "@/lib/auth";
-import { deleteRecipeRow, deleteWebImport, insertRecipe, updateRecipeRow } from "@/lib/db";
+import { randomUUID } from "node:crypto";
+import {
+  deletePhotoIfUnused,
+  deleteRecipeRow,
+  deleteWebImport,
+  findRecipe,
+  insertPhoto,
+  insertRecipe,
+  updateRecipeRow,
+} from "@/lib/db";
+import { copyRemoteImage } from "@/lib/remote-image";
 import { ExtractionError, recipeFromPhotos, type PhotoInput } from "@/lib/ai";
 import { RecipeInputSchema, type RecipeInput } from "@/lib/types";
 
@@ -59,11 +69,18 @@ export async function saveRecipeAction(
   const data = clean(parsed.data);
   if (!data.title) return { error: "Give the recipe a title." };
 
+  // Keep our own copy of website pictures instead of linking to other sites.
+  if (/^https?:\/\//.test(data.imageUrl)) {
+    data.imageUrl = (await copyRemoteImage(data.imageUrl)) ?? "";
+  }
+
   let recipeId = id;
   if (recipeId === null) {
     recipeId = await insertRecipe(data);
   } else {
+    const before = await findRecipe(recipeId);
     await updateRecipeRow(recipeId, data);
+    if (before && before.imageUrl !== data.imageUrl) await deletePhotoIfUnused(before.imageUrl);
   }
   if (importId) await deleteWebImport(importId);
   updateTag("recipes");
@@ -72,9 +89,15 @@ export async function saveRecipeAction(
 
 export async function deleteRecipeAction(id: number) {
   await requireUnlocked(`/recipes/${id}/edit`);
+  const recipe = await findRecipe(id);
   await deleteRecipeRow(id);
+  if (recipe) await deletePhotoIfUnused(recipe.imageUrl);
   updateTag("recipes");
   redirect("/");
+}
+
+function isImageUrl(url: string) {
+  return /^https?:\/\//.test(url) || /^\/photos\/[0-9a-f-]{36}$/.test(url);
 }
 
 function clean(r: RecipeInput): RecipeInput {
@@ -83,6 +106,7 @@ function clean(r: RecipeInput): RecipeInput {
     title: r.title.trim(),
     description: r.description.trim(),
     notes: r.notes.trim(),
+    imageUrl: isImageUrl(r.imageUrl.trim()) ? r.imageUrl.trim() : "",
     sourceUrl: /^https?:\/\//.test(r.sourceUrl.trim()) ? r.sourceUrl.trim() : "",
     tags: [...new Set(r.tags.map((t) => t.trim().toLowerCase()).filter(Boolean))],
     ingredients: r.ingredients
@@ -111,4 +135,22 @@ export async function recipeFromPhotosAction(
     console.error(error);
     return { error: "Something went wrong reading the photo." };
   }
+}
+
+// ---- Dish photo upload ----
+
+const MAX_PHOTO_BYTES = 1_500_000;
+
+export async function uploadPhotoAction(
+  photo: PhotoInput,
+): Promise<{ url: string } | { error: string }> {
+  if (!(await isUnlocked())) return { error: "Locked. Enter the passcode again." };
+  if (photo.mediaType !== "image/jpeg") return { error: "Unsupported image type." };
+  const data = Buffer.from(photo.data, "base64");
+  if (data.length === 0 || data.length > MAX_PHOTO_BYTES) {
+    return { error: "That photo is too large." };
+  }
+  const id = randomUUID();
+  await insertPhoto(id, photo.mediaType, new Uint8Array(data));
+  return { url: `/photos/${id}` };
 }

@@ -8,8 +8,9 @@ function buildBookmarklet(origin: string) {
 var d=document,f=d.createElement('form');
 f.method='POST';f.action=${JSON.stringify(origin + "/api/import")};f.acceptCharset='UTF-8';
 function a(n,v){var i=d.createElement('textarea');i.name=n;i.value=v||'';f.appendChild(i);}
+var m=d.querySelector('meta[property="og:image"]');
 var s=[].map.call(d.querySelectorAll('script[type="application/ld+json"]'),function(x){return x.textContent}).join('\\n');
-a('url',location.href);a('title',d.title);a('structured',s.slice(0,60000));
+a('url',location.href);a('image',m?m.content:'');a('title',d.title);a('structured',s.slice(0,60000));
 a('text',(d.body.innerText||'').slice(0,120000));
 f.style.display='none';d.body.appendChild(f);f.submit();
 })();`;

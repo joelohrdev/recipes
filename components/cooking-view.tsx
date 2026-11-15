@@ -48,6 +48,15 @@ export function CookingView({ recipe }: { recipe: Recipe }) {
         </div>
       </div>
 
+      {recipe.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={recipe.imageUrl}
+          alt=""
+          className="mt-6 h-56 w-full rounded-2xl object-cover md:h-72"
+        />
+      )}
+
       <div className="mt-8 grid gap-8 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <section className="md:sticky md:top-24 md:self-start">
           <div className="rounded-2xl border border-line bg-card p-5">

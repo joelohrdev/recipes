@@ -11,7 +11,10 @@ export function RecipeGrid({ recipes }: { recipes: RecipeSummary[] }) {
   const tags = useMemo(() => {
     const counts = new Map<string, number>();
     for (const r of recipes) for (const t of r.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([t]) => t);
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 14)
+      .map(([t]) => t);
   }, [recipes]);
 
   const shown = recipes.filter((r) => {
@@ -30,12 +33,16 @@ export function RecipeGrid({ recipes }: { recipes: RecipeSummary[] }) {
       <div className="mx-auto mt-16 max-w-md text-center">
         <p className="font-display text-3xl">Your recipe box is empty</p>
         <p className="mt-3 text-muted">
-          Add one by typing it in, snapping a photo of a printed recipe, or using the
-          browser button on any recipe website.
+          Add one by typing it in, snapping a photo of a printed recipe, or using the browser button
+          on any recipe website.
         </p>
         <div className="mt-8 flex justify-center gap-3">
-          <Link href="/recipes/new" className="btn-primary">Add a recipe</Link>
-          <Link href="/bookmarklet" className="btn-ghost">Set up browser button</Link>
+          <Link href="/recipes/new" className="btn-primary">
+            Add a recipe
+          </Link>
+          <Link href="/bookmarklet" className="btn-ghost">
+            Set up browser button
+          </Link>
         </div>
       </div>
     );
@@ -73,20 +80,38 @@ export function RecipeGrid({ recipes }: { recipes: RecipeSummary[] }) {
           <li key={r.id}>
             <Link
               href={`/recipes/${r.id}`}
-              className="flex h-full flex-col rounded-2xl border border-line border-l-4 border-l-accent bg-card p-5 transition active:scale-[0.99]"
+              className="flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card transition active:scale-[0.99]"
             >
-              <h2 className="font-display text-xl font-semibold leading-snug">{r.title}</h2>
-              {r.description && (
-                <p className="mt-2 line-clamp-2 text-muted">{r.description}</p>
-              )}
-              <p className="mt-auto pt-3 text-sm font-semibold text-muted">
+              <div className="aspect-[4/3] overflow-hidden bg-accent-soft">
+                {r.imageUrl ? (
+                  // Pictures come from many recipe sites, so skip next/image domain config.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={r.imageUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center font-display text-6xl text-accent/60">
+                    {r.title.slice(0, 1)}
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-1 flex-col p-4">
+                <h2 className="font-display text-xl font-semibold leading-snug">{r.title}</h2>
+                {r.description && (
+                  <p className="mt-1 line-clamp-2 text-sm text-muted">{r.description}</p>
+                )}
+                <p className="mt-auto pt-2 text-sm font-semibold text-muted">
                   {[
                     totalTime(r.prepMinutes, r.cookMinutes),
                     r.servings ? `${r.servings} ${r.servingsLabel}` : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
-              </p>
+                </p>
+              </div>
             </Link>
           </li>
         ))}

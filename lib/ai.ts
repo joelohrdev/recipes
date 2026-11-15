@@ -18,7 +18,8 @@ Rules:
 - prepMinutes and cookMinutes as whole numbers of minutes when stated.
 - tags: 2 to 5 short lowercase tags (cuisine, meal type, main ingredient, e.g. "dessert", "chicken", "italian").
 - description: one or two sentences describing the dish, from the source if it has one.
-- notes: tips, storage or variation notes from the source; otherwise empty.`;
+- notes: tips, storage or variation notes from the source; otherwise empty.
+- imageUrl: the absolute https URL of the finished-dish photo when the structured data names one ("image"); otherwise empty.`;
 
 export class ExtractionError extends Error {}
 
@@ -84,7 +85,7 @@ export async function recipeFromPhotos(photos: PhotoInput[]) {
           : "This is a photo of a printed recipe. Extract the recipe.",
     },
   ]);
-  return { ...recipe, sourceUrl: "" };
+  return { ...recipe, imageUrl: "", sourceUrl: "" };
 }
 
 export async function recipeFromWebPage(page: {
@@ -92,6 +93,7 @@ export async function recipeFromWebPage(page: {
   title: string;
   structured: string;
   pageText: string;
+  imageUrl: string;
 }) {
   const recipe = await extract([
     {
@@ -110,5 +112,6 @@ export async function recipeFromWebPage(page: {
         .join("\n\n"),
     },
   ]);
-  return { ...recipe, sourceUrl: page.url };
+  const imageUrl = /^https:\/\//.test(recipe.imageUrl) ? recipe.imageUrl : page.imageUrl;
+  return { ...recipe, sourceUrl: page.url, imageUrl };
 }

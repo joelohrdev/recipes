@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
-import { deleteRecipeAction, recipeFromPhotosAction, saveRecipeAction } from "@/app/actions";
+import {
+  deleteRecipeAction,
+  recipeFromPhotosAction,
+  saveRecipeAction,
+  uploadPhotoAction,
+} from "@/app/actions";
 import { parseQuantity, quantityToInput } from "@/lib/quantity";
 import type { RecipeInput } from "@/lib/types";
 
@@ -58,6 +63,7 @@ export function RecipeForm({
   const [servingsLabel, setServingsLabel] = useState(initial.servingsLabel || "servings");
   const [prep, setPrep] = useState(initial.prepMinutes ? String(initial.prepMinutes) : "");
   const [cook, setCook] = useState(initial.cookMinutes ? String(initial.cookMinutes) : "");
+  const [imageUrl, setImageUrl] = useState(initial.imageUrl);
   const [sourceUrl, setSourceUrl] = useState(initial.sourceUrl);
   const [tags, setTags] = useState(initial.tags.join(", "));
   const [notes, setNotes] = useState(initial.notes);
@@ -73,6 +79,7 @@ export function RecipeForm({
     setServingsLabel(r.servingsLabel || "servings");
     setPrep(r.prepMinutes ? String(r.prepMinutes) : "");
     setCook(r.cookMinutes ? String(r.cookMinutes) : "");
+    if (r.imageUrl) setImageUrl(r.imageUrl);
     if (r.sourceUrl) setSourceUrl(r.sourceUrl);
     setTags(r.tags.join(", "));
     setNotes(r.notes);
@@ -100,6 +107,7 @@ export function RecipeForm({
       servingsLabel,
       prepMinutes: numOrNull(prep),
       cookMinutes: numOrNull(cook),
+      imageUrl,
       sourceUrl,
       notes,
       tags: tags.split(","),
@@ -136,6 +144,8 @@ export function RecipeForm({
       {error && <p className="mt-4 rounded-xl bg-accent-soft p-4 font-semibold text-accent">{error}</p>}
       {banner}
       {allowPhoto && <PhotoImport onRecipe={load} />}
+
+      <DishPhoto url={imageUrl} onChange={setImageUrl} />
 
       <div className="mt-6 grid gap-5 rounded-2xl border border-line bg-card p-5 md:grid-cols-2">
         <label className="md:col-span-2">
@@ -296,13 +306,16 @@ const MAX_PHOTOS = 4;
 const MAX_UPLOAD_CHARS = 4_000_000;
 
 /** Downscale a camera photo to a JPEG small enough to upload quickly. */
-async function shrink(file: File): Promise<{ mediaType: "image/jpeg"; data: string }> {
+async function shrink(
+  file: File,
+  maxEdge = MAX_EDGE,
+): Promise<{ mediaType: "image/jpeg"; data: string }> {
   const url = URL.createObjectURL(file);
   try {
     const img = new Image();
     img.src = url;
     await img.decode();
-    const scale = Math.min(1, MAX_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+    const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(img.naturalWidth * scale);
     canvas.height = Math.round(img.naturalHeight * scale);
@@ -411,4 +424,63 @@ function Thumb({ file }: { file: File }) {
   const [src] = useState(() => URL.createObjectURL(file));
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={src} alt="" className="h-24 w-24 rounded-xl object-cover" />;
+}
+
+// ---- Picture of the finished dish ----
+
+function DishPhoto({ url, onChange }: { url: string; onChange: (url: string) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const upload = (file: File) => {
+    setError(null);
+    start(async () => {
+      try {
+        const result = await uploadPhotoAction(await shrink(file, 1400));
+        if ("error" in result) setError(result.error);
+        else onChange(result.url);
+      } catch {
+        setError("Couldn't upload that photo. Try another one.");
+      }
+    });
+  };
+
+  return (
+    <div className="mt-6 flex flex-wrap items-center gap-5 rounded-2xl border border-line bg-card p-5">
+      <div className="h-28 w-40 shrink-0 overflow-hidden rounded-xl bg-accent-soft">
+        {url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-3xl text-accent/60">🍽</div>
+        )}
+      </div>
+      <div className="min-w-60 flex-1">
+        <h2 className="font-display text-xl font-semibold">Picture of the dish</h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <input
+            ref={input}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) upload(file);
+              e.target.value = "";
+            }}
+          />
+          <button type="button" className="btn-ghost" onClick={() => input.current?.click()} disabled={pending}>
+            {pending ? "Uploading…" : url ? "Change picture" : "Take or choose picture"}
+          </button>
+          {url && !pending && (
+            <button type="button" className="btn text-muted" onClick={() => onChange("")}>
+              Remove
+            </button>
+          )}
+        </div>
+        {error && <p className="mt-2 text-sm font-semibold text-accent">{error}</p>}
+      </div>
+    </div>
+  );
 }

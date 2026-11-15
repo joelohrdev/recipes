@@ -29,6 +29,7 @@ const SCHEMA = `
     servings_label TEXT NOT NULL DEFAULT 'servings',
     prep_minutes   INTEGER,
     cook_minutes   INTEGER,
+    image_url      TEXT NOT NULL DEFAULT '',
     source_url     TEXT NOT NULL DEFAULT '',
     notes          TEXT NOT NULL DEFAULT '',
     tags           TEXT NOT NULL DEFAULT '[]',
@@ -45,10 +46,35 @@ const SCHEMA = `
     title       TEXT NOT NULL DEFAULT '',
     page_text   TEXT NOT NULL,
     structured  TEXT NOT NULL DEFAULT '',
+    image_url   TEXT NOT NULL DEFAULT '',
     result      TEXT,
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  -- Dish photos taken or chosen on the device, served from /photos/<id>.
+  CREATE TABLE IF NOT EXISTS photos (
+    id          TEXT PRIMARY KEY,
+    mime        TEXT NOT NULL,
+    data        BLOB NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `;
+
+// Columns added after the first release; added to existing databases on startup.
+const ADDED_COLUMNS: [table: string, column: string, definition: string][] = [
+  ["recipes", "image_url", "TEXT NOT NULL DEFAULT ''"],
+  ["web_imports", "image_url", "TEXT NOT NULL DEFAULT ''"],
+];
+
+async function migrate(client: Client) {
+  await client.executeMultiple(SCHEMA);
+  for (const [table, column, definition] of ADDED_COLUMNS) {
+    const { rows } = await client.execute(`PRAGMA table_info(${table})`);
+    if (!rows.some((r) => r.name === column)) {
+      await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
+  }
+}
 
 // One client per server process (and across hot reloads in development).
 // The tables are created on first use, so a new Turso database needs no setup.
@@ -58,7 +84,7 @@ function db(): Promise<Client> {
   if (!globalForDb.recipeDb) {
     globalForDb.recipeDb = (async () => {
       const client = connect();
-      await client.executeMultiple(SCHEMA);
+      await migrate(client);
       return client;
     })().catch((error) => {
       globalForDb.recipeDb = undefined; // retry on the next request
@@ -77,6 +103,7 @@ function toRecipe(row: Row): Recipe {
     servingsLabel: String(row.servings_label),
     prepMinutes: row.prep_minutes === null ? null : Number(row.prep_minutes),
     cookMinutes: row.cook_minutes === null ? null : Number(row.cook_minutes),
+    imageUrl: String(row.image_url),
     sourceUrl: String(row.source_url),
     notes: String(row.notes),
     tags: JSON.parse(String(row.tags)),
@@ -95,6 +122,7 @@ function toParams(r: RecipeInput) {
     servings_label: r.servingsLabel || "servings",
     prep_minutes: r.prepMinutes,
     cook_minutes: r.cookMinutes,
+    image_url: r.imageUrl,
     source_url: r.sourceUrl,
     notes: r.notes,
     tags: JSON.stringify(r.tags),
@@ -113,6 +141,7 @@ export async function listRecipes(): Promise<RecipeSummary[]> {
       id: r.id,
       title: r.title,
       description: r.description,
+      imageUrl: r.imageUrl,
       tags: r.tags,
       prepMinutes: r.prepMinutes,
       cookMinutes: r.cookMinutes,
@@ -133,9 +162,9 @@ export async function findRecipe(id: number): Promise<Recipe | null> {
 export async function insertRecipe(r: RecipeInput): Promise<number> {
   const result = await (await db()).execute({
     sql: `INSERT INTO recipes (title, description, servings, servings_label, prep_minutes,
-            cook_minutes, source_url, notes, tags, ingredients, steps)
+            cook_minutes, image_url, source_url, notes, tags, ingredients, steps)
           VALUES (:title, :description, :servings, :servings_label, :prep_minutes,
-            :cook_minutes, :source_url, :notes, :tags, :ingredients, :steps)`,
+            :cook_minutes, :image_url, :source_url, :notes, :tags, :ingredients, :steps)`,
     args: toParams(r),
   });
   return Number(result.lastInsertRowid);
@@ -145,7 +174,7 @@ export async function updateRecipeRow(id: number, r: RecipeInput) {
   await (await db()).execute({
     sql: `UPDATE recipes SET title=:title, description=:description, servings=:servings,
             servings_label=:servings_label, prep_minutes=:prep_minutes, cook_minutes=:cook_minutes,
-            source_url=:source_url, notes=:notes, tags=:tags,
+            image_url=:image_url, source_url=:source_url, notes=:notes, tags=:tags,
             ingredients=:ingredients, steps=:steps, updated_at=datetime('now')
           WHERE id=:id`,
     args: { ...toParams(r), id },
@@ -164,6 +193,7 @@ export type WebImport = {
   title: string;
   pageText: string;
   structured: string;
+  imageUrl: string;
   result: RecipeInput | null;
 };
 
@@ -173,8 +203,8 @@ export async function insertWebImport(i: Omit<WebImport, "result">) {
     [
       "DELETE FROM web_imports WHERE created_at < datetime('now', '-2 days')",
       {
-        sql: `INSERT INTO web_imports (id, url, title, page_text, structured)
-              VALUES (:id, :url, :title, :pageText, :structured)`,
+        sql: `INSERT INTO web_imports (id, url, title, page_text, structured, image_url)
+              VALUES (:id, :url, :title, :pageText, :structured, :imageUrl)`,
         args: i,
       },
     ],
@@ -195,6 +225,7 @@ export async function findWebImport(id: string): Promise<WebImport | null> {
     title: String(row.title),
     pageText: String(row.page_text),
     structured: String(row.structured),
+    imageUrl: String(row.image_url),
     result: row.result ? JSON.parse(String(row.result)) : null,
   };
 }
@@ -208,4 +239,40 @@ export async function saveWebImportResult(id: string, result: RecipeInput) {
 
 export async function deleteWebImport(id: string) {
   await (await db()).execute({ sql: "DELETE FROM web_imports WHERE id = ?", args: [id] });
+}
+
+// ---- Dish photos ----
+
+export async function insertPhoto(id: string, mime: string, data: Uint8Array) {
+  const client = await db();
+  await client.execute({
+    sql: "INSERT INTO photos (id, mime, data) VALUES (?, ?, ?)",
+    args: [id, mime, data],
+  });
+  // Drop photos uploaded for recipes that were never saved.
+  await client.execute(
+    `DELETE FROM photos WHERE created_at < datetime('now', '-1 day')
+       AND NOT EXISTS (SELECT 1 FROM recipes WHERE image_url = '/photos/' || photos.id)`,
+  );
+}
+
+export async function findPhoto(id: string) {
+  const { rows } = await (await db()).execute({
+    sql: "SELECT mime, data FROM photos WHERE id = ?",
+    args: [id],
+  });
+  const row = rows[0];
+  if (!row) return null;
+  return { mime: String(row.mime), data: row.data as ArrayBuffer };
+}
+
+/** Delete an uploaded photo once no recipe points at it. */
+export async function deletePhotoIfUnused(imageUrl: string) {
+  const match = imageUrl.match(/^\/photos\/([0-9a-f-]{36})$/);
+  if (!match) return;
+  await (await db()).execute({
+    sql: `DELETE FROM photos WHERE id = ?
+            AND NOT EXISTS (SELECT 1 FROM recipes WHERE image_url = ?)`,
+    args: [match[1], imageUrl],
+  });
 }
