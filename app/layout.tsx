@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { LockStatus } from "@/components/lock-status";
 import { Bookmark, Mark, Plus } from "@/components/icons";
+import { OfflineBanner, ServiceWorker } from "@/components/pwa";
 import "./globals.css";
 
 // Atkinson Hyperlegible was drawn for low-vision readers: it holds up when the
@@ -20,7 +21,6 @@ export const metadata: Metadata = {
   title: { default: "Recipe Box", template: "%s | Recipe Box" },
   description: "Family recipes, scaled to any table.",
   appleWebApp: { title: "Recipes", capable: true, statusBarStyle: "default" },
-  manifest: "/manifest.webmanifest",
 };
 
 export const viewport: Viewport = {
@@ -36,6 +36,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${body.variable} ${slab.variable} antialiased`}>
       <body className="min-h-dvh font-sans">
+        <ServiceWorker />
+        <OfflineBanner />
         <header className="border-b border-line">
           <div className="mx-auto flex h-[4.5rem] max-w-6xl items-center gap-1 px-4 sm:gap-2 sm:px-5">
             <Link href="/" className="mr-auto flex items-center gap-2.5 rounded-md">

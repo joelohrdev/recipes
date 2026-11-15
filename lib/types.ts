@@ -49,6 +49,7 @@ export type RecipeSummary = Pick<
   | "cookMinutes"
   | "servings"
   | "servingsLabel"
+  | "updatedAt"
 >;
 
 export const emptyRecipe: RecipeInput = {

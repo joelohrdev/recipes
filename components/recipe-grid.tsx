@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { totalTime } from "@/lib/format";
 import type { RecipeSummary } from "@/lib/types";
 import { Bookmark, Bowl, Camera, Clock, Plus, Search } from "./icons";
+import { SaveForOffline } from "./pwa";
 
 export function RecipeGrid({ recipes }: { recipes: RecipeSummary[] }) {
   const [query, setQuery] = useState("");
@@ -34,6 +35,7 @@ export function RecipeGrid({ recipes }: { recipes: RecipeSummary[] }) {
 
   return (
     <div>
+      <SaveForOffline recipes={recipes} />
       <label className="relative block max-w-xl">
         <span className="sr-only">Search recipes</span>
         <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-soft" />

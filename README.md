@@ -10,6 +10,9 @@ tap-to-check ingredients and steps, and a "keep screen on" switch.
   the app. AI reads it and opens a filled-in form. Set it up at `/bookmarklet`.
 - **Passcode**: anyone can read recipes; adding, editing and deleting asks for the
   passcode once per device (remembered for 90 days, "Lock" in the header forgets it).
+- **Works offline**: it installs as an app (*Share → Add to Home Screen* in Safari).
+  Every recipe and its photo is saved on the device whenever you open the recipe list
+  online, so recipes still open with no connection. Edits wait until you're back online.
 
 Recipes are stored in [Turso](https://turso.tech) (hosted SQLite). The tables are
 created automatically the first time the app connects.
@@ -49,4 +52,8 @@ database instead.
 3. In the Vercel project's **Settings → Environment Variables**, add all five
    variables from the table above, then redeploy.
 4. On the iPad, open the Vercel URL in Safari and choose *Share → Add to Home
-   Screen*. Set up the browser button from the app's **Browser button** page.
+   Screen*. Set up the browser button from the app's **Save from the web** page.
+
+The offline service worker (`public/sw.js`) only runs in production builds. To try it
+locally, run `npm run build` and `npm start`. If a change to `sw.js` needs old saved
+pages thrown away, bump its `VERSION`.

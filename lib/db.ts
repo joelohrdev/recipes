@@ -147,6 +147,7 @@ export async function listRecipes(): Promise<RecipeSummary[]> {
       cookMinutes: r.cookMinutes,
       servings: r.servings,
       servingsLabel: r.servingsLabel,
+      updatedAt: r.updatedAt,
     };
   });
 }
