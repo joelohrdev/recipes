@@ -139,11 +139,24 @@ body {
 }
 
 /* Divider tabs, like the cardboard dividers in a recipe box. */
+/* A row of tabs that only ever scrolls sideways. The rule under the tabs is an
+   inset shadow rather than a border, so the open tab can cover it without
+   sticking out of the row, which would let the row drift up and down. */
+.divider-tabs {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  scrollbar-width: none;
+  box-shadow: inset 0 -1px 0 var(--line);
+}
+.divider-tabs::-webkit-scrollbar {
+  display: none;
+}
 .divider-tab {
   border: 1px solid transparent;
   border-bottom: 0;
   border-radius: 10px 10px 0 0;
-  margin-bottom: -1px;
 }
 .divider-tab[aria-pressed="true"] {
   background: var(--paper);

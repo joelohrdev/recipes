@@ -48,7 +48,7 @@ export function RecipeGrid({ recipes }: { recipes: RecipeSummary[] }) {
         />
       </label>
 
-      <div className="mt-8 flex gap-1 overflow-x-auto border-b border-line [scrollbar-width:none]">
+      <div className="divider-tabs mt-8 flex gap-1">
         <Tab active={tag === null} onClick={() => setTag(null)}>
           All recipes
         </Tab>
