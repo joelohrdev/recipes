@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Recipe Box
 
-## Getting Started
+A recipe app made for the iPad: big touch targets, a two-column cooking view,
+tap-to-check ingredients and steps, and a "keep screen on" switch.
 
-First, run the development server:
+- **Scale servings**: the − / + stepper rescales every amount (1½ cups → 2¼ cups).
+- **Photo import**: on *Add recipe*, take a photo of a printed recipe (several pages
+  are fine) and AI fills in the form for you to check.
+- **Browser button**: a bookmarklet that sends the recipe page you're looking at to
+  the app. AI reads it and opens a filled-in form. Set it up at `/bookmarklet`.
+- **Passcode**: anyone can read recipes; adding, editing and deleting asks for the
+  passcode once per device (remembered for 90 days, "Lock" in the header forgets it).
+
+Recipes are stored in SQLite at `data/recipes.db`.
+
+## Setup
 
 ```bash
+npm install
+cp .env.example .env.local   # then set the passcode, secret and API key
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Variable | What it is |
+| --- | --- |
+| `RECIPE_PASSCODE` | Passcode for add/edit/delete |
+| `SESSION_SECRET` | Long random string (`openssl rand -hex 32`) |
+| `ANTHROPIC_API_KEY` | Claude API key, used for photo and web import |
+| `DATABASE_PATH` | Optional, defaults to `./data/recipes.db` |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Using it on the iPad
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Run the app on a computer that stays on, then open its address on the iPad
+(`npm run dev` prints a `Network:` URL like `http://192.168.1.66:3000`). In Safari,
+*Share → Add to Home Screen* gives it its own icon and full-screen window.
 
-## Learn More
+For the browser button to work on recipe sites, which are served over HTTPS, the app
+should also be reachable over HTTPS (for example through a reverse proxy or a tunnel
+such as Tailscale Serve). Over plain HTTP, Safari warns before sending the page.
 
-To learn more about Next.js, take a look at the following resources:
+For a long-running install, use the production server:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run build
+npm start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Back up `data/recipes.db` to keep your recipes safe.
