@@ -5,7 +5,7 @@ import { RecipeGrid } from "@/components/recipe-grid";
 
 export default function Home() {
   return (
-    <Suspense fallback={<div className="field h-14 animate-pulse rounded-2xl" />}>
+    <Suspense fallback={<div className="field h-14 max-w-xl" />}>
       <Recipes />
     </Suspense>
   );

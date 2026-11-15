@@ -2,130 +2,176 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { totalTime } from "@/lib/format";
 import type { RecipeSummary } from "@/lib/types";
+import { Bookmark, Bowl, Camera, Clock, Plus, Search } from "./icons";
 
 export function RecipeGrid({ recipes }: { recipes: RecipeSummary[] }) {
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState<string | null>(null);
 
+  // The most used tags become divider tabs.
   const tags = useMemo(() => {
     const counts = new Map<string, number>();
     for (const r of recipes) for (const t of r.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
     return [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 14)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 12)
       .map(([t]) => t);
   }, [recipes]);
 
-  const shown = recipes.filter((r) => {
-    if (tag && !r.tags.includes(tag)) return false;
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      r.title.toLowerCase().includes(q) ||
-      r.description.toLowerCase().includes(q) ||
-      r.tags.some((t) => t.includes(q))
-    );
-  });
+  if (recipes.length === 0) return <EmptyBox />;
 
-  if (recipes.length === 0) {
-    return (
-      <div className="mx-auto mt-16 max-w-md text-center">
-        <p className="font-display text-3xl">Your recipe box is empty</p>
-        <p className="mt-3 text-muted">
-          Add one by typing it in, snapping a photo of a printed recipe, or using the browser button
-          on any recipe website.
-        </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <Link href="/recipes/new" className="btn-primary">
-            Add a recipe
-          </Link>
-          <Link href="/bookmarklet" className="btn-ghost">
-            Set up browser button
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const q = query.trim().toLowerCase();
+  const shown = recipes.filter(
+    (r) =>
+      (!tag || r.tags.includes(tag)) &&
+      (!q ||
+        r.title.toLowerCase().includes(q) ||
+        r.description.toLowerCase().includes(q) ||
+        r.tags.some((t) => t.includes(q))),
+  );
 
   return (
     <div>
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder={`Search ${recipes.length} recipes…`}
-        className="field h-14 rounded-2xl text-lg"
-      />
-      {tags.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {tags.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTag(tag === t ? null : t)}
-              className={`min-h-10 rounded-full border px-4 text-sm font-semibold transition ${
-                tag === t
-                  ? "border-accent bg-accent text-accent-ink"
-                  : "border-line bg-card text-muted"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      )}
+      <label className="relative block max-w-xl">
+        <span className="sr-only">Search recipes</span>
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-soft" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={recipes.length === 1 ? "Search 1 recipe" : `Search ${recipes.length} recipes`}
+          className="field h-14 pl-12 text-lg"
+        />
+      </label>
 
-      <ul className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {shown.map((r) => (
-          <li key={r.id}>
-            <Link
-              href={`/recipes/${r.id}`}
-              className="flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card transition active:scale-[0.99]"
-            >
-              <div className="aspect-[4/3] overflow-hidden bg-accent-soft">
-                {r.imageUrl ? (
-                  // Pictures come from many recipe sites, so skip next/image domain config.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={r.imageUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center font-display text-6xl text-accent/60">
-                    {r.title.slice(0, 1)}
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-1 flex-col p-4">
-                <h2 className="font-display text-xl font-semibold leading-snug">{r.title}</h2>
-                {r.description && (
-                  <p className="mt-1 line-clamp-2 text-sm text-muted">{r.description}</p>
-                )}
-                <p className="mt-auto pt-2 text-sm font-semibold text-muted">
-                  {[
-                    totalTime(r.prepMinutes, r.cookMinutes),
-                    r.servings ? `${r.servings} ${r.servingsLabel}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              </div>
-            </Link>
-          </li>
+      <div className="mt-8 flex gap-1 overflow-x-auto border-b border-line [scrollbar-width:none]">
+        <Tab active={tag === null} onClick={() => setTag(null)}>
+          All recipes
+        </Tab>
+        {tags.map((t) => (
+          <Tab key={t} active={tag === t} onClick={() => setTag(tag === t ? null : t)}>
+            <span className="capitalize">{t}</span>
+          </Tab>
         ))}
-      </ul>
-      {shown.length === 0 && <p className="mt-10 text-center text-muted">No recipes match.</p>}
+      </div>
+
+      <div className="rounded-b-[10px] border border-t-0 border-line bg-paper p-5 md:p-7">
+        {shown.length === 0 ? (
+          <p className="py-10 text-center text-ink-soft">
+            Nothing matches{q ? ` “${query.trim()}”` : ""}
+            {tag ? ` under ${tag}` : ""}.
+          </p>
+        ) : (
+          <ul className="grid grid-cols-1 gap-x-6 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
+            {shown.map((r) => (
+              <li key={r.id}>
+                <RecipeTile recipe={r} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
 
-export function totalTime(prep: number | null, cook: number | null) {
-  const total = (prep ?? 0) + (cook ?? 0);
-  if (!total) return null;
-  if (total < 60) return `${total} min`;
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  return m ? `${h} h ${m} min` : `${h} h`;
+function Tab(props: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      aria-pressed={props.active}
+      onClick={props.onClick}
+      className="divider-tab min-h-12 shrink-0 px-5 font-semibold text-ink-soft"
+    >
+      {props.children}
+    </button>
+  );
+}
+
+function RecipeTile({ recipe: r }: { recipe: RecipeSummary }) {
+  const time = totalTime(r.prepMinutes, r.cookMinutes);
+  return (
+    <Link href={`/recipes/${r.id}`} className="group block rounded-md">
+      <div className="aspect-[4/3] overflow-hidden rounded-md bg-enamel">
+        {r.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={r.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+        ) : (
+          <CardPlaceholder />
+        )}
+      </div>
+      <h2 className="mt-3 font-slab text-[1.4375rem] font-semibold leading-tight group-active:text-cobalt">
+        {r.title}
+      </h2>
+      {(time || r.servings) && (
+        <div className="mt-1.5 flex flex-wrap gap-x-4 text-[0.9375rem] text-ink-soft">
+          {time && (
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="h-4 w-4" />
+              {time}
+            </span>
+          )}
+          {r.servings ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Bowl className="h-4 w-4" />
+              {r.servings} {r.servingsLabel}
+            </span>
+          ) : null}
+        </div>
+      )}
+    </Link>
+  );
+}
+
+/** Recipes without a picture show a blank index card instead. */
+function CardPlaceholder() {
+  return (
+    <div className="flex h-full items-center justify-center">
+      <div className="index-card h-3/5 w-1/2 rotate-[-3deg] px-[8%] pt-[9%]">
+        <div className="h-[3px] rounded bg-margin/80" />
+        <div className="mt-[14%] h-[3px] rounded bg-rule" />
+        <div className="mt-[14%] h-[3px] w-4/5 rounded bg-rule" />
+        <div className="mt-[14%] h-[3px] w-3/5 rounded bg-rule" />
+      </div>
+    </div>
+  );
+}
+
+function EmptyBox() {
+  return (
+    <div className="mx-auto mt-10 max-w-lg">
+      <h1 className="font-slab text-4xl font-bold">No recipes yet</h1>
+      <p className="mt-3 text-lg text-ink-soft">Add your first one in whichever way is easiest:</p>
+      <div className="mt-6 grid gap-3">
+        <Link href="/recipes/new" className="btn-plain justify-start px-5 py-3 text-left">
+          <Camera className="h-6 w-6 shrink-0 text-cobalt" />
+          <span>
+            Photograph a printed recipe
+            <span className="block text-[0.9375rem] font-normal text-ink-soft">
+              The form fills itself in from the picture.
+            </span>
+          </span>
+        </Link>
+        <Link href="/bookmarklet" className="btn-plain justify-start px-5 py-3 text-left">
+          <Bookmark className="h-6 w-6 shrink-0 text-cobalt" />
+          <span>
+            Save one from a website
+            <span className="block text-[0.9375rem] font-normal text-ink-soft">
+              Set up the browser button once, then tap it on any recipe page.
+            </span>
+          </span>
+        </Link>
+        <Link href="/recipes/new" className="btn-plain justify-start px-5 py-3 text-left">
+          <Plus className="h-6 w-6 shrink-0 text-cobalt" />
+          <span>
+            Type one in
+            <span className="block text-[0.9375rem] font-normal text-ink-soft">
+              Ingredients, steps and notes.
+            </span>
+          </span>
+        </Link>
+      </div>
+    </div>
+  );
 }

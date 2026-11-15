@@ -7,7 +7,7 @@ export const metadata = { title: "New recipe" };
 
 export default function NewRecipePage() {
   return (
-    <Suspense fallback={<p className="mt-10 text-center text-muted">Loading…</p>}>
+    <Suspense fallback={<p className="mt-10 text-ink-soft">Opening the recipe…</p>}>
       <NewRecipe />
     </Suspense>
   );

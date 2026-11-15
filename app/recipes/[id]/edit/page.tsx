@@ -8,7 +8,7 @@ export const metadata = { title: "Edit recipe" };
 
 export default function EditRecipePage({ params }: PageProps<"/recipes/[id]/edit">) {
   return (
-    <Suspense fallback={<p className="mt-10 text-center text-muted">Loading…</p>}>
+    <Suspense fallback={<p className="mt-10 text-ink-soft">Opening the recipe…</p>}>
       <EditRecipe params={params} />
     </Suspense>
   );

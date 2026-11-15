@@ -37,7 +37,7 @@ export async function loginAction(
   if (!passcodeMatches(passcode)) {
     failures.push(now);
     await new Promise((r) => setTimeout(r, 600));
-    return { error: "Wrong passcode." };
+    return { error: "That passcode didn’t match. Try again." };
   }
   await unlock();
   redirect(next);

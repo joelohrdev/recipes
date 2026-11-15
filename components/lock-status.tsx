@@ -1,13 +1,15 @@
 import { isUnlocked } from "@/lib/auth";
 import { logoutAction } from "@/app/actions";
+import { Lock } from "./icons";
 
-/** Shows a "Lock" button while editing is unlocked on this device. */
+/** While editing is unlocked on this device, offers to lock it again. */
 export async function LockStatus() {
   if (!(await isUnlocked())) return null;
   return (
     <form action={logoutAction}>
-      <button className="btn px-4 text-sm text-muted" title="Require the passcode again">
-        🔓 Lock
+      <button className="btn-quiet max-sm:px-3" title="Ask for the passcode again">
+        <Lock />
+        <span className="max-sm:hidden">Lock</span>
       </button>
     </form>
   );

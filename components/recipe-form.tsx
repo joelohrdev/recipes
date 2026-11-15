@@ -10,6 +10,7 @@ import {
 } from "@/app/actions";
 import { parseQuantity, quantityToInput } from "@/lib/quantity";
 import type { RecipeInput } from "@/lib/types";
+import { ArrowDown, ArrowUp, Camera, Close, ImageIcon, Plus, Trash } from "./icons";
 
 type Row = {
   key: number;
@@ -135,22 +136,29 @@ export function RecipeForm({
       className="mx-auto max-w-4xl"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-3xl font-semibold">{id ? "Edit recipe" : "New recipe"}</h1>
+        <h1 className="font-slab text-[2.5rem] font-bold leading-tight">
+          {id ? "Edit recipe" : importId ? "Check the import" : "New recipe"}
+        </h1>
         <div className="flex gap-2">
-          <Link href={id ? `/recipes/${id}` : "/"} className="btn-ghost">Cancel</Link>
+          <Link href={id ? `/recipes/${id}` : "/"} className="btn-plain">Cancel</Link>
           <button className="btn-primary" disabled={saving}>{saving ? "Saving…" : "Save recipe"}</button>
         </div>
       </div>
-      {error && <p className="mt-4 rounded-xl bg-accent-soft p-4 font-semibold text-accent">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-5 rounded-[8px] border-l-4 border-margin bg-paper p-4 font-semibold">
+          {error}
+        </p>
+      )}
       {banner}
       {allowPhoto && <PhotoImport onRecipe={load} />}
 
       <DishPhoto url={imageUrl} onChange={setImageUrl} />
 
-      <div className="mt-6 grid gap-5 rounded-2xl border border-line bg-card p-5 md:grid-cols-2">
+      <Section title="About this recipe">
+      <div className="grid gap-5 md:grid-cols-2">
         <label className="md:col-span-2">
           <span className="label">Title</span>
-          <input className="field text-lg" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          <input className="field font-slab text-xl font-semibold" value={title} onChange={(e) => setTitle(e.target.value)} required />
         </label>
         <label className="md:col-span-2">
           <span className="label">Description</span>
@@ -168,35 +176,40 @@ export function RecipeForm({
         </div>
         <div className="grid grid-cols-2 gap-3">
           <label>
-            <span className="label">Prep (min)</span>
+            <span className="label">Prep minutes</span>
             <input className="field" inputMode="numeric" value={prep} onChange={(e) => setPrep(e.target.value)} />
           </label>
           <label>
-            <span className="label">Cook (min)</span>
+            <span className="label">Cook minutes</span>
             <input className="field" inputMode="numeric" value={cook} onChange={(e) => setCook(e.target.value)} />
           </label>
         </div>
         <label className="md:col-span-2">
-          <span className="label">Source URL</span>
+          <span className="label">Where it came from</span>
           <input className="field" type="url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://…" />
         </label>
         <label className="md:col-span-2">
-          <span className="label">Tags (comma separated)</span>
+          <span className="label">Tags, separated by commas</span>
           <input className="field" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="dinner, chicken, quick" />
         </label>
       </div>
+      </Section>
 
-      <section className="mt-8">
-        <h2 className="font-display text-2xl font-semibold">Ingredients</h2>
-        <p className="mt-1 text-sm text-muted">
-          Amounts like <b>1 1/2</b>, <b>½</b> or <b>2-3</b> scale when you change servings.
-        </p>
-        <ul className="mt-4 space-y-2">
+      <Section
+        title="Ingredients"
+        hint={<>Amounts like <b>1 1/2</b>, <b>½</b> or <b>2-3</b> scale when you change servings.</>}
+      >
+        {rows.length > 0 && (
+          <div className="mb-2 hidden grid-cols-[5.5rem_6rem_minmax(0,2fr)_minmax(0,1.3fr)_8.5rem] gap-2 px-0.5 text-[0.9375rem] text-ink-soft md:grid">
+            <span>Amount</span><span>Unit</span><span>Ingredient</span><span>Note</span>
+          </div>
+        )}
+        <ul className="divide-y divide-line border-y border-line md:divide-y-0 md:border-0 md:space-y-2">
           {rows.map((r, i) => (
-            <li key={r.key} className="flex items-center gap-2 rounded-xl border border-line bg-card p-2">
+            <li key={r.key} className="flex items-center gap-2 py-3 md:py-0">
               {r.isHeading ? (
                 <input
-                  className="field font-bold uppercase tracking-wide"
+                  className="field font-slab text-lg font-semibold"
                   value={r.name}
                   onChange={(e) => updateRow(r.key, { name: e.target.value })}
                   placeholder="Section, e.g. For the sauce"
@@ -204,10 +217,10 @@ export function RecipeForm({
                 />
               ) : (
                 <div className="grid flex-1 grid-cols-[5rem_5.5rem_minmax(0,1fr)] gap-2 md:grid-cols-[5.5rem_6rem_minmax(0,2fr)_minmax(0,1.3fr)]">
-                  <input className="field px-3" value={r.qty} onChange={(e) => updateRow(r.key, { qty: e.target.value })} placeholder="1 1/2" aria-label="Amount" />
-                  <input className="field px-3" value={r.unit} onChange={(e) => updateRow(r.key, { unit: e.target.value })} placeholder="cup" aria-label="Unit" autoCapitalize="none" />
-                  <input className="field px-3" value={r.name} onChange={(e) => updateRow(r.key, { name: e.target.value })} placeholder="flour" aria-label="Ingredient" />
-                  <input className="field col-span-3 px-3 md:col-span-1" value={r.note} onChange={(e) => updateRow(r.key, { note: e.target.value })} placeholder="note (sifted)" aria-label="Note" />
+                  <input className="field px-3" value={r.qty} onChange={(e) => updateRow(r.key, { qty: e.target.value })} placeholder={i === 0 ? "1 1/2" : undefined} aria-label="Amount" />
+                  <input className="field px-3" value={r.unit} onChange={(e) => updateRow(r.key, { unit: e.target.value })} placeholder={i === 0 ? "cup" : undefined} aria-label="Unit" autoCapitalize="none" />
+                  <input className="field px-3" value={r.name} onChange={(e) => updateRow(r.key, { name: e.target.value })} placeholder={i === 0 ? "flour" : undefined} aria-label="Ingredient" />
+                  <input className="field col-span-3 px-3 md:col-span-1" value={r.note} onChange={(e) => updateRow(r.key, { note: e.target.value })} placeholder={i === 0 ? "sifted" : undefined} aria-label="Note" />
                 </div>
               )}
               <RowTools
@@ -218,18 +231,21 @@ export function RecipeForm({
             </li>
           ))}
         </ul>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" className="btn-ghost" onClick={() => setRows((rs) => [...rs, blankRow()])}>+ Ingredient</button>
-          <button type="button" className="btn-ghost" onClick={() => setRows((rs) => [...rs, blankRow(true)])}>+ Section heading</button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" className="btn-plain" onClick={() => setRows((rs) => [...rs, blankRow()])}>
+            <Plus /> Add ingredient
+          </button>
+          <button type="button" className="btn-quiet" onClick={() => setRows((rs) => [...rs, blankRow(true)])}>
+            <Plus /> Add a group heading
+          </button>
         </div>
-      </section>
+      </Section>
 
-      <section className="mt-8">
-        <h2 className="font-display text-2xl font-semibold">Method</h2>
-        <ol className="mt-4 space-y-2">
+      <Section title="Method">
+        <ol className="space-y-3">
           {steps.map((s, i) => (
-            <li key={i} className="flex items-start gap-2 rounded-xl border border-line bg-card p-2">
-              <span className="mt-2.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent font-bold text-accent-ink">
+            <li key={i} className="flex items-start gap-3">
+              <span className="mt-2.5 w-8 shrink-0 text-center text-[1.375rem] font-bold text-cobalt">
                 {i + 1}
               </span>
               <textarea
@@ -246,15 +262,20 @@ export function RecipeForm({
             </li>
           ))}
         </ol>
-        <button type="button" className="btn-ghost mt-3" onClick={() => setSteps((st) => [...st, ""])}>+ Step</button>
-      </section>
+        <button type="button" className="btn-plain mt-4" onClick={() => setSteps((st) => [...st, ""])}>
+          <Plus /> Add step
+        </button>
+      </Section>
 
-      <section className="mt-8">
-        <label>
-          <span className="font-display text-2xl font-semibold">Notes</span>
-          <textarea className="field mt-3 min-h-28 py-3" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Tips, substitutions, storage…" />
-        </label>
-      </section>
+      <Section title="Notes">
+        <textarea
+          aria-label="Notes"
+          className="field min-h-28 py-3"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Tips, swaps, how to store it"
+        />
+      </Section>
 
       <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6">
         {id ? <DeleteButton id={id} /> : <span />}
@@ -271,13 +292,23 @@ function swap<T>(list: T[], a: number, b: number) {
   return copy;
 }
 
+function Section(props: { title: string; hint?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="mt-10">
+      <h2 className="font-slab text-2xl font-bold">{props.title}</h2>
+      {props.hint && <p className="mt-1 text-[0.9375rem] text-ink-soft">{props.hint}</p>}
+      <div className="mt-4">{props.children}</div>
+    </section>
+  );
+}
+
 function RowTools(props: { onUp: () => void; onDown: () => void; onRemove: () => void }) {
-  const cls = "flex h-11 w-11 items-center justify-center rounded-lg text-lg text-muted active:bg-accent-soft";
+  const cls = "flex h-11 w-11 items-center justify-center rounded-[8px] text-ink-soft active:bg-cobalt-wash";
   return (
     <div className="flex shrink-0 flex-col md:flex-row">
-      <button type="button" className={cls} onClick={props.onUp} aria-label="Move up">↑</button>
-      <button type="button" className={cls} onClick={props.onDown} aria-label="Move down">↓</button>
-      <button type="button" className={cls} onClick={props.onRemove} aria-label="Remove">✕</button>
+      <button type="button" className={cls} onClick={props.onUp} aria-label="Move up"><ArrowUp /></button>
+      <button type="button" className={cls} onClick={props.onDown} aria-label="Move down"><ArrowDown /></button>
+      <button type="button" className={cls} onClick={props.onRemove} aria-label="Remove"><Close /></button>
     </div>
   );
 }
@@ -287,12 +318,13 @@ function DeleteButton({ id }: { id: number }) {
   return (
     <button
       type="button"
-      className="btn text-accent"
+      className="btn text-margin active:bg-cobalt-wash"
       disabled={pending}
       onClick={() => {
         if (confirm("Delete this recipe? This can't be undone.")) start(() => deleteRecipeAction(id));
       }}
     >
+      <Trash />
       {pending ? "Deleting…" : "Delete recipe"}
     </button>
   );
@@ -344,7 +376,7 @@ function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
           setError("Those photos are too large together. Try fewer pages at a time.");
           return;
         }
-        setStatus("Reading the recipe… this can take up to a minute.");
+        setStatus("Reading the recipe. This can take up to a minute.");
         const result = await recipeFromPhotosAction(photos);
         if ("error" in result) setError(result.error);
         else {
@@ -360,13 +392,14 @@ function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
   };
 
   return (
-    <div className="mt-6 rounded-2xl border-2 border-dashed border-accent/40 bg-accent-soft p-5">
+    <div className="mt-6 rounded-[10px] bg-cobalt-wash p-5">
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex-1">
-          <h2 className="font-display text-xl font-semibold">📷 Fill in from a photo</h2>
-          <p className="mt-1 text-sm text-muted">
-            Snap a printed recipe or recipe card. Add more photos if it spans pages, then
-            review what AI filled in before saving.
+        <Camera className="h-8 w-8 shrink-0 text-cobalt" />
+        <div className="min-w-56 flex-1">
+          <h2 className="font-slab text-xl font-bold">Fill in from a photo</h2>
+          <p className="mt-0.5 text-[0.9375rem] text-ink-soft">
+            Photograph a printed recipe or recipe card, up to 4 pages. Check what was filled in
+            before you save.
           </p>
         </div>
         <input
@@ -383,15 +416,15 @@ function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
         />
         <button
           type="button"
-          className="btn-ghost"
+          className="btn-plain"
           onClick={() => input.current?.click()}
           disabled={pending || files.length >= MAX_PHOTOS}
         >
-          {files.length ? "Add another photo" : "Take or choose photo"}
+          {files.length ? "Add a page" : "Take or choose photo"}
         </button>
         {files.length > 0 && (
           <button type="button" className="btn-primary" onClick={run} disabled={pending}>
-            {pending ? "Reading…" : `Fill recipe from ${files.length} photo${files.length > 1 ? "s" : ""}`}
+            {pending ? "Reading…" : files.length > 1 ? `Read ${files.length} pages` : "Read this page"}
           </button>
         )}
       </div>
@@ -405,17 +438,17 @@ function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
                   type="button"
                   aria-label="Remove photo"
                   onClick={() => setFiles((fs) => fs.filter((_, j) => j !== i))}
-                  className="absolute -right-2 -top-2 flex h-8 w-8 items-center justify-center rounded-full bg-ink text-sm text-paper"
+                  className="absolute -right-2 -top-2 flex h-8 w-8 items-center justify-center rounded-full bg-ink text-paper"
                 >
-                  ✕
+                  <Close className="h-4 w-4" />
                 </button>
               )}
             </li>
           ))}
         </ul>
       )}
-      {status && <p className="mt-3 animate-pulse font-semibold">{status}</p>}
-      {error && <p className="mt-3 font-semibold text-accent">{error}</p>}
+      {status && <p className="mt-3 font-semibold" aria-live="polite">{status}</p>}
+      {error && <p role="alert" className="mt-3 font-semibold text-margin">{error}</p>}
     </div>
   );
 }
@@ -423,7 +456,7 @@ function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
 function Thumb({ file }: { file: File }) {
   const [src] = useState(() => URL.createObjectURL(file));
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt="" className="h-24 w-24 rounded-xl object-cover" />;
+  return <img src={src} alt="" className="h-24 w-20 rounded-[4px] object-cover" />;
 }
 
 // ---- Picture of the finished dish ----
@@ -447,17 +480,20 @@ function DishPhoto({ url, onChange }: { url: string; onChange: (url: string) => 
   };
 
   return (
-    <div className="mt-6 flex flex-wrap items-center gap-5 rounded-2xl border border-line bg-card p-5">
-      <div className="h-28 w-40 shrink-0 overflow-hidden rounded-xl bg-accent-soft">
+    <div className="mt-6 flex flex-wrap items-center gap-5">
+      <div className="h-32 w-44 shrink-0 overflow-hidden rounded-md border border-line bg-paper">
         {url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={url} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full items-center justify-center text-3xl text-accent/60">🍽</div>
+          <div className="flex h-full items-center justify-center text-done">
+            <ImageIcon className="h-9 w-9" />
+          </div>
         )}
       </div>
       <div className="min-w-60 flex-1">
-        <h2 className="font-display text-xl font-semibold">Picture of the dish</h2>
+        <h2 className="font-slab text-xl font-bold">Picture of the dish</h2>
+        <p className="text-[0.9375rem] text-ink-soft">Shown on the recipe and in your list.</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <input
             ref={input}
@@ -470,16 +506,17 @@ function DishPhoto({ url, onChange }: { url: string; onChange: (url: string) => 
               e.target.value = "";
             }}
           />
-          <button type="button" className="btn-ghost" onClick={() => input.current?.click()} disabled={pending}>
+          <button type="button" className="btn-plain" onClick={() => input.current?.click()} disabled={pending}>
+            <Camera />
             {pending ? "Uploading…" : url ? "Change picture" : "Take or choose picture"}
           </button>
           {url && !pending && (
-            <button type="button" className="btn text-muted" onClick={() => onChange("")}>
+            <button type="button" className="btn-quiet" onClick={() => onChange("")}>
               Remove
             </button>
           )}
         </div>
-        {error && <p className="mt-2 text-sm font-semibold text-accent">{error}</p>}
+        {error && <p role="alert" className="mt-2 font-semibold text-margin">{error}</p>}
       </div>
     </div>
   );

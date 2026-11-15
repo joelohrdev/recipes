@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: PageProps<"/recipes/[id]">) {
 
 export default function RecipePage({ params }: PageProps<"/recipes/[id]">) {
   return (
-    <Suspense fallback={<p className="mt-10 text-center text-muted">Loading…</p>}>
+    <Suspense fallback={<p className="mt-10 text-ink-soft">Opening the recipe…</p>}>
       <Recipe params={params} />
     </Suspense>
   );

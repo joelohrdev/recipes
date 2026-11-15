@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Bookmark, Check, Copy } from "./icons";
 
 /** The bookmarklet posts the current page's text and recipe data to /api/import. */
 function buildBookmarklet(origin: string) {
@@ -42,50 +43,58 @@ export function BookmarkletSetup() {
     }
   };
 
+  const steps: React.ReactNode[] = [
+    <>
+      <button onClick={copy} className="btn-primary" disabled={!href}>
+        {copied ? <Check /> : <Copy />}
+        {copied ? "Copied" : "Copy the bookmark code"}
+      </button>
+    </>,
+    <>
+      In Safari, tap <b>Share</b>, then <b>Add Bookmark</b>. Name it <b>Save recipe</b> and
+      put it in <b>Favorites</b>.
+    </>,
+    <>
+      Open the bookmarks sidebar, press and hold <b>Save recipe</b>, and choose <b>Edit</b>.
+      Replace the address with the code you copied.
+    </>,
+    <>
+      On any recipe page, tap <b>Save recipe</b> in the Favorites bar.
+    </>,
+  ];
+
   return (
-    <div className="mt-8 space-y-6">
-      <section className="rounded-2xl border border-line bg-card p-6">
-        <h2 className="font-display text-2xl font-semibold">On iPad (Safari)</h2>
-        <ol className="mt-4 list-decimal space-y-3 pl-6 text-lg">
-          <li>
-            <button onClick={copy} className="btn-primary" disabled={!href}>
-              {copied ? "✓ Copied" : "Copy bookmark code"}
-            </button>
+    <div className="mt-10">
+      <h2 className="font-slab text-2xl font-bold">On the iPad</h2>
+      <ol className="mt-4 border-t border-line">
+        {steps.map((step, i) => (
+          <li key={i} className="flex gap-5 border-b border-line py-5 text-[1.125rem] leading-relaxed">
+            <span className="w-8 shrink-0 text-center text-[1.375rem] font-bold text-cobalt">
+              {i + 1}
+            </span>
+            <div className="pt-1">{step}</div>
           </li>
-          <li>
-            Tap the <b>Share</b> button in Safari and choose <b>Add Bookmark</b>. Name it{" "}
-            <b>Save recipe</b> and save it to <b>Favorites</b>.
-          </li>
-          <li>
-            Open the bookmarks sidebar, press and hold <b>Save recipe</b>, choose{" "}
-            <b>Edit</b>, clear the address field and paste the code you copied.
-          </li>
-          <li>
-            On a recipe website, tap <b>Save recipe</b> in your Favorites bar. You&apos;ll land
-            on a filled-in recipe to review.
-          </li>
-        </ol>
-      </section>
+        ))}
+      </ol>
 
-      <section className="rounded-2xl border border-line bg-card p-6">
-        <h2 className="font-display text-2xl font-semibold">On a computer</h2>
-        <p className="mt-3 text-lg">Drag this button onto your bookmarks bar:</p>
-        <a
-          ref={link}
-          onClick={(e) => {
-            e.preventDefault();
-            alert("Drag this button to your bookmarks bar instead of clicking it.");
-          }}
-          className="btn-primary mt-4 cursor-grab"
-        >
-          🍳 Save recipe
-        </a>
-      </section>
+      <h2 className="mt-12 font-slab text-2xl font-bold">On a computer</h2>
+      <p className="mt-2 text-[1.125rem]">Drag this button onto your bookmarks bar.</p>
+      <a
+        ref={link}
+        onClick={(e) => {
+          e.preventDefault();
+          alert("Drag this button onto your bookmarks bar rather than clicking it.");
+        }}
+        className="btn-primary mt-4 cursor-grab"
+      >
+        <Bookmark />
+        Save recipe
+      </a>
 
-      <p className="text-sm text-muted">
-        The first time you use it on a device you&apos;ll be asked for your passcode. The
-        bookmark only works while this app is reachable at{" "}
-        <code className="rounded bg-accent-soft px-1.5 py-0.5">{origin || "…"}</code>.
+      <p className="mt-12 border-l-4 border-rule pl-4 text-[0.9375rem] text-ink-soft">
+        The first time you use it on a device, you’ll be asked for the passcode. The bookmark
+        sends pages to <span className="font-semibold text-ink">{origin || "this app"}</span>, so
+        set it up again if the app’s address changes.
       </p>
     </div>
   );
