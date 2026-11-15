@@ -53,8 +53,15 @@ async function extract(
     if (error instanceof Anthropic.RateLimitError) {
       throw new ExtractionError("Claude is busy right now. Try again in a minute.");
     }
+    if (error instanceof Anthropic.BadRequestError) {
+      console.error("Claude rejected the request:", error.message);
+      throw new ExtractionError("Claude couldn't use that input. Try a clearer photo or a different page.");
+    }
     if (error instanceof Anthropic.APIError) {
-      throw new ExtractionError(`Claude API error (${error.status}): ${error.message}`);
+      console.error(`Claude API error ${error.status}:`, error.message);
+      throw new ExtractionError(
+        `Claude isn't responding right now (error ${error.status ?? "unknown"}). Try again in a minute.`,
+      );
     }
     throw error;
   }

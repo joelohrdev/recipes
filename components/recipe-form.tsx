@@ -9,6 +9,7 @@ import {
   uploadPhotoAction,
 } from "@/app/actions";
 import { parseQuantity, quantityToInput } from "@/lib/quantity";
+import { PhotoError, preparePhoto } from "@/lib/prepare-photo";
 import type { RecipeInput } from "@/lib/types";
 import { ArrowDown, ArrowUp, Camera, Close, ImageIcon, Plus, Trash } from "./icons";
 
@@ -337,28 +338,6 @@ const MAX_PHOTOS = 4;
 // Vercel rejects requests over 4.5 MB, so keep the photos well under that.
 const MAX_UPLOAD_CHARS = 4_000_000;
 
-/** Downscale a camera photo to a JPEG small enough to upload quickly. */
-async function shrink(
-  file: File,
-  maxEdge = MAX_EDGE,
-): Promise<{ mediaType: "image/jpeg"; data: string }> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = new Image();
-    img.src = url;
-    await img.decode();
-    const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.naturalWidth * scale);
-    canvas.height = Math.round(img.naturalHeight * scale);
-    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-    return { mediaType: "image/jpeg", data: dataUrl.slice(dataUrl.indexOf(",") + 1) };
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
 function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -371,7 +350,10 @@ function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
     start(async () => {
       try {
         setStatus("Preparing photos…");
-        const photos = await Promise.all(files.map(shrink));
+        // One at a time: decoding several large photos at once can exhaust
+        // Safari's image memory on an iPad.
+        const photos = [];
+        for (const file of files) photos.push(await preparePhoto(file, MAX_EDGE));
         if (photos.reduce((sum, p) => sum + p.data.length, 0) > MAX_UPLOAD_CHARS) {
           setError("Those photos are too large together. Try fewer pages at a time.");
           return;
@@ -383,8 +365,8 @@ function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
           onRecipe(result.recipe);
           setFiles([]);
         }
-      } catch {
-        setError("Couldn't read that photo. Try another one.");
+      } catch (e) {
+        setError(e instanceof PhotoError ? e.message : "Something went wrong reading the photo. Try again.");
       } finally {
         setStatus(null);
       }
@@ -405,7 +387,7 @@ function PhotoImport({ onRecipe }: { onRecipe: (r: RecipeInput) => void }) {
         <input
           ref={input}
           type="file"
-          accept="image/*"
+          accept="image/*,.dng"
           multiple
           hidden
           onChange={(e) => {
@@ -470,11 +452,11 @@ function DishPhoto({ url, onChange }: { url: string; onChange: (url: string) => 
     setError(null);
     start(async () => {
       try {
-        const result = await uploadPhotoAction(await shrink(file, 1400));
+        const result = await uploadPhotoAction(await preparePhoto(file, 1400));
         if ("error" in result) setError(result.error);
         else onChange(result.url);
-      } catch {
-        setError("Couldn't upload that photo. Try another one.");
+      } catch (e) {
+        setError(e instanceof PhotoError ? e.message : "Couldn't upload that photo. Try again.");
       }
     });
   };
@@ -498,7 +480,7 @@ function DishPhoto({ url, onChange }: { url: string; onChange: (url: string) => 
           <input
             ref={input}
             type="file"
-            accept="image/*"
+            accept="image/*,.dng"
             hidden
             onChange={(e) => {
               const file = e.target.files?.[0];

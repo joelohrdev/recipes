@@ -126,7 +126,10 @@ export async function recipeFromPhotosAction(
     return { error: "Add between 1 and 4 photos." };
   }
   if (!photos.every((p) => ["image/jpeg", "image/png", "image/webp"].includes(p.mediaType))) {
-    return { error: "Unsupported image type." };
+    return { error: "That photo type isn't supported. Use a JPEG, PNG or HEIC photo." };
+  }
+  if (!photos.every(isUsableImage)) {
+    return { error: "A photo came through empty. Remove it and add it again." };
   }
   try {
     return { recipe: await recipeFromPhotos(photos) };
@@ -137,6 +140,16 @@ export async function recipeFromPhotosAction(
   }
 }
 
+/** Rejects empty or corrupt uploads before they're sent to Claude or stored. */
+function isUsableImage(photo: PhotoInput) {
+  if (typeof photo.data !== "string" || photo.data.length < 1_000) return false;
+  const bytes = Buffer.from(photo.data.slice(0, 16), "base64");
+  const jpeg = bytes[0] === 0xff && bytes[1] === 0xd8;
+  const png = bytes[0] === 0x89 && bytes[1] === 0x50;
+  const webp = bytes.subarray(8, 12).toString("ascii") === "WEBP";
+  return jpeg || png || webp;
+}
+
 // ---- Dish photo upload ----
 
 const MAX_PHOTO_BYTES = 1_500_000;
@@ -145,7 +158,10 @@ export async function uploadPhotoAction(
   photo: PhotoInput,
 ): Promise<{ url: string } | { error: string }> {
   if (!(await isUnlocked())) return { error: "Locked. Enter the passcode again." };
-  if (photo.mediaType !== "image/jpeg") return { error: "Unsupported image type." };
+  if (photo.mediaType !== "image/jpeg") {
+    return { error: "That photo type isn't supported. Use a JPEG, PNG or HEIC photo." };
+  }
+  if (!isUsableImage(photo)) return { error: "The photo came through empty. Try choosing it again." };
   const data = Buffer.from(photo.data, "base64");
   if (data.length === 0 || data.length > MAX_PHOTO_BYTES) {
     return { error: "That photo is too large." };
