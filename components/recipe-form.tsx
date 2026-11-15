@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import {
-  deleteRecipeAction,
   recipeFromPhotosAction,
   saveRecipeAction,
   uploadPhotoAction,
@@ -11,7 +10,8 @@ import {
 import { parseQuantity, quantityToInput } from "@/lib/quantity";
 import { PhotoError, preparePhoto, type PreparedPhoto } from "@/lib/prepare-photo";
 import type { RecipeInput } from "@/lib/types";
-import { ArrowDown, ArrowUp, Camera, Close, ImageIcon, Plus, Trash } from "./icons";
+import { DeleteRecipe } from "./delete-recipe";
+import { ArrowDown, ArrowUp, Camera, Close, ImageIcon, Plus } from "./icons";
 
 type Row = {
   key: number;
@@ -279,7 +279,7 @@ export function RecipeForm({
       </Section>
 
       <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6">
-        {id ? <DeleteButton id={id} /> : <span />}
+        {id ? <div className="flex flex-1 flex-wrap"><DeleteRecipe id={id} title={initial.title} /></div> : <span />}
         <button className="btn-primary h-14 px-8 text-lg" disabled={saving}>{saving ? "Saving…" : "Save recipe"}</button>
       </div>
     </form>
@@ -311,23 +311,6 @@ function RowTools(props: { onUp: () => void; onDown: () => void; onRemove: () =>
       <button type="button" className={cls} onClick={props.onDown} aria-label="Move down"><ArrowDown /></button>
       <button type="button" className={cls} onClick={props.onRemove} aria-label="Remove"><Close /></button>
     </div>
-  );
-}
-
-function DeleteButton({ id }: { id: number }) {
-  const [pending, start] = useTransition();
-  return (
-    <button
-      type="button"
-      className="btn text-margin active:bg-cobalt-wash"
-      disabled={pending}
-      onClick={() => {
-        if (confirm("Delete this recipe? This can't be undone.")) start(() => deleteRecipeAction(id));
-      }}
-    >
-      <Trash />
-      {pending ? "Deleting…" : "Delete recipe"}
-    </button>
   );
 }
 

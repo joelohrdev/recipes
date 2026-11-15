@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { hostname, minutes, totalTime } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
 import type { Recipe } from "@/lib/types";
+import { DeleteRecipe } from "./delete-recipe";
 import { Check, Link as LinkIcon, Minus, Pencil, Plus, Sun } from "./icons";
 
 export function CookingView({ recipe }: { recipe: Recipe }) {
@@ -64,6 +65,7 @@ export function CookingView({ recipe }: { recipe: Recipe }) {
                 {hostname(recipe.sourceUrl)}
               </a>
             )}
+            <DeleteRecipe id={recipe.id} title={recipe.title} />
           </div>
         </div>
         {recipe.imageUrl && (
